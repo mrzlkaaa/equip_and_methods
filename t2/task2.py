@@ -1,30 +1,72 @@
+import sys
+from functools import reduce
+import numpy as np
 import matplotlib.pyplot as plt
 
-inp = [ 0.0, 0.812259 , 0.25,1.02074 , 0.5,0.742084 ,0.75,-0.599976, 1.0,-1.75458, 1.25,-1.67628, 1.5,-0.993707, 1.75,-2.34081, 2.0,-6.81634, 2.25,-8.11703, 2.5,-8.77741, 2.75,-8.01749,
-        3.,-5.79967, 3.25,-11.0675, 3.5,-8.12723, 3.75,-7.4023, 4.,-7.36746, 4.25,-12.0502,
-        4.5,-8.06463, 4.75,-7.64898, 5.,-7.93421, 5.25,-5.38163, 5.5,-2.74851, 5.75,-0.186976,
-        6.,2.82951, 6.25,8.0042 , 6.5,7.35092, 6.75,16.4523, 7.,23.7762, 7.25,22.5357, 7.5,31.6361, 7.75,48.7253, 8.,47.2674
-    ]
 
-x = []
-y = []
+# plt.plot(x, y, "ro", label = "experemental")
+# plt.savefig("0.png")
 
-for n, i in enumerate(inp, start=1):
-    i = float(i)
-    if n%2==0:
-        y.append(i)
-    else:
-        x.append(i)
-    
-plt.plot(x, y, "ro", label = "experemental")
-plt.savefig("0.png")
 
 class Poly_Appr:
     def __init__(self, x, y):
         self.x_data = x
         self.y_data = y
 
+    @classmethod
+    def load_input_data(cls):
+        x_data, y_data = [], []
+        with open("input.txt", "r") as f:
+            data = f.readlines()
+        for i in data:
+            i = i.split("    ")
+            x_data.append(float(i[0]))
+            y_data.append(float(i[1]))
+        return cls(x_data, y_data)
+
+    def sma(self, period):
+        y_sma_array = []
+        back_ind = len(self.x_data)-period+1
+        x_sma_array = self.x_data[-back_ind:]
+        for i in range(len(self.y_data)-1):
+            shift = self.y_data[i:period+i]
+            y_sma_array.append(reduce(lambda x, y: x+y, shift)/period)
+            if period+i == len(self.y_data):
+                break
+        return x_sma_array, y_sma_array
+
+    def poly_fit(self, x, y, degree):
+        z = np.polyfit(x, y, degree)
+        p = np.poly1d(z)
+        return p
+
+    def get_chi(self, expected, observed):
+
+        chi = 0
+        for ind in range(len(observed)):
+            chi += (abs(observed[ind]) -
+                    abs(expected[ind]))**2/abs(expected[ind])
+        print(chi)
+        return chi
+
+
 if __name__ == '__main__':
-    print(inp)
-    print(x)
-    print(y)
+    poly_appr = Poly_Appr.load_input_data()
+    print(poly_appr.x_data, poly_appr.y_data)
+
+    plt.plot(poly_appr.x_data, poly_appr.y_data, "ro", label="experemental")
+    x_sma_ar_2, y_sma_ar_2 = poly_appr.sma(2)
+    x_sma_ar_3, y_sma_ar_3 = poly_appr.sma(3)
+    x_sma_ar_4, y_sma_ar_4 = poly_appr.sma(4)
+    plt.plot(x_sma_ar_2, y_sma_ar_2, color="blue")
+    # plt.plot(x_sma_ar_3, y_sma_ar_3, color="black")
+    # plt.plot(x_sma_ar_4, y_sma_ar_4, color="green")
+    max_chi = 44.985
+    for i in range(1, 10):
+        poly = poly_appr.poly_fit(x_sma_ar_2, y_sma_ar_2, i)
+        y_poly_ar = poly(x_sma_ar_2)
+        if poly_appr.get_chi(y_poly_ar, y_sma_ar_2) < max_chi:
+            print(f"good fit with {i} degree")
+            break
+    plt.plot(x_sma_ar_2, poly(x_sma_ar_2), color="black")
+    plt.savefig("2.png")
