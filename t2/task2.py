@@ -24,13 +24,17 @@ class Poly_Appr:
             y_data.append(float(i[1]))
         return cls(x_data, y_data)
 
+    # * creates new x and y arrays with [lenght = initial length - period (shift)]
     def sma(self, period):
         y_sma_array = []
+        x_sma_array = []
         back_ind = len(self.x_data)-period+1
-        x_sma_array = self.x_data[-back_ind:]
+        # x_sma_array = self.x_data[-back_ind:]
         for i in range(len(self.y_data)-1):
-            shift = self.y_data[i:period+i]
-            y_sma_array.append(reduce(lambda x, y: x+y, shift)/period)
+            shift_y = self.y_data[i:period+i]
+            shift_x = self.x_data[i:period+i]
+            y_sma_array.append(reduce(lambda x, y: x+y, shift_y)/period)
+            x_sma_array.append(reduce(lambda x, y: x+y, shift_x)/period)
             if period+i == len(self.y_data):
                 break
         return x_sma_array, y_sma_array
@@ -38,6 +42,8 @@ class Poly_Appr:
     def poly_fit(self, x, y, degree):
         z = np.polyfit(x, y, degree)
         p = np.poly1d(z)
+        with open("polynomial equiation.txt", "w+") as f:
+            f.write(str(p))
         return p
 
     def get_chi(self, expected, observed):
@@ -45,16 +51,16 @@ class Poly_Appr:
         for ind in range(len(observed)):
             chi += (abs(observed[ind]) -
                     abs(expected[ind]))**2/abs(expected[ind])
-        print("chi squared", chi)
+        print("chi squared ", chi)
         return chi
 
-    def get_variance(self, expected, observed):
+    def get_variance(self, expected, observed):  # * it's like variance but not
         sub_sq = 0
-        for ind in range(len(expected)):
+        for ind in range(len(observed)):
             sub_sq += (abs(observed[ind]) -
                        abs(expected[ind]))**2
-        summ = sub_sq/(len(expected)-1)
-        return summ
+        coef = sub_sq/(len(expected)-1)
+        return coef
 
 
 if __name__ == '__main__':
@@ -65,19 +71,24 @@ if __name__ == '__main__':
     x_sma_ar_2, y_sma_ar_2 = poly_appr.sma(2)
     x_sma_ar_3, y_sma_ar_3 = poly_appr.sma(3)
     x_sma_ar_4, y_sma_ar_4 = poly_appr.sma(4)
-    plt.plot(x_sma_ar_2, y_sma_ar_2, color="blue")
+    # plt.plot(x_sma_ar_2, y_sma_ar_2, color="blue", label="sma with 2 elements")
+    plt.plot(x_sma_ar_3, y_sma_ar_3, color="green",
+             label="sma with 3 elements")
     # plt.plot(x_sma_ar_3, y_sma_ar_3, color="black")
     # plt.plot(x_sma_ar_4, y_sma_ar_4, color="green")
-    max_chi = 44.985
-    for i in range(1, 11):
+
+    max_chi = np.random.chisquare(len(x_sma_ar_2)-1)
+    print("max chi", max_chi)
+    for i in range(1, 15):
         poly = poly_appr.poly_fit(x_sma_ar_2, y_sma_ar_2, i)
         y_poly_ar = poly(x_sma_ar_2)
-        print("mean of poly_fit: ", y_poly_ar.mean())
-        if poly_appr.get_chi(y_poly_ar, y_sma_ar_2) < max_chi:
-            # * check the variance
-            print(poly_appr.get_variance(
-                y_poly_ar, y_sma_ar_2), "should me near of 1")
+        if 0.95 < poly_appr.get_variance(y_poly_ar, y_sma_ar_2) < 1.05:
+            poly_appr.get_chi(y_poly_ar, y_sma_ar_2)
+            print("sub_sq/degrees of freedom",
+                  poly_appr.get_variance(y_poly_ar, y_sma_ar_2))
             print(f"good fit with {i} degree")
             # break
-    plt.plot(x_sma_ar_2, poly(x_sma_ar_2), color="black")
+    plt.plot(x_sma_ar_2, y_poly_ar, color="black", label="poly fit")
+    plt.legend()
+
     plt.savefig("2.png")
